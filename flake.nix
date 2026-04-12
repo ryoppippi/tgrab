@@ -8,6 +8,7 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -25,7 +26,6 @@
         "x86_64-linux"
         "aarch64-linux"
         "aarch64-darwin"
-        "x86_64-darwin"
       ];
 
       perSystem =
@@ -37,6 +37,19 @@
         }:
         let
           toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+
+          # crane with the pinned rust-overlay toolchain
+          craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
+
+          src = craneLib.cleanCargoSource ./.;
+
+          commonArgs = {
+            inherit src;
+            strictDeps = true;
+          };
+
+          # Build dependencies separately so they are cached across rebuilds
+          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
         in
         {
           # Inject nixpkgs with rust-overlay applied
@@ -56,6 +69,16 @@
               nixfmt.enable = true;
               taplo.enable = true;
             };
+          };
+
+          packages.default = craneLib.buildPackage (commonArgs // {
+            inherit cargoArtifacts;
+          });
+
+          checks = {
+            tests = craneLib.cargoTest (commonArgs // {
+              inherit cargoArtifacts;
+            });
           };
 
           devShells.default = pkgs.mkShell {
