@@ -2,7 +2,6 @@
 
 <img width="2136" height="1596" alt="CleanShot 2026-04-12 at 23 50 44@2x" src="https://github.com/user-attachments/assets/bacba27a-afb8-4fa2-82b0-035c0031b555" />
 
-
 [![built with nix](https://builtwithnix.org/badge.svg)](https://builtwithnix.org)
 
 A CLI tool that fetches text content from services that normally require a browser or login — YouTube transcripts, Twitter/X posts, and Bluesky posts.
