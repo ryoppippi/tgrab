@@ -79,6 +79,7 @@
           );
 
           checks = {
+            build = config.packages.default;
             tests = craneLib.cargoTest (
               commonArgs
               // {
