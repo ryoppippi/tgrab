@@ -1,6 +1,8 @@
 use anyhow::{Result, anyhow};
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::HttpClient;
 
@@ -22,8 +24,19 @@ pub struct Transcript {
     pub lines: Vec<TranscriptLine>,
 }
 
-const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 \
-     (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+/// Android client context sent to the Innertube player API.
+/// Using the Android client bypasses bot detection that blocks the HTML approach.
+const INNERTUBE_CLIENT: &str =
+    r#"{"context":{"client":{"clientName":"ANDROID","clientVersion":"20.10.38"}},"videoId":""#;
+const INNERTUBE_URL: &str = "https://www.youtube.com/youtubei/v1/player?key=";
+
+static RE_INNERTUBE_KEY: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#""INNERTUBE_API_KEY"\s*:\s*"([A-Za-z0-9_-]+)""#)
+        .expect("invalid INNERTUBE_API_KEY regex")
+});
+
+static RE_TITLE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"<title>([^<]*)</title>").expect("invalid title regex"));
 
 /// Extract a YouTube video ID from a URL.
 ///
@@ -39,9 +52,6 @@ const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleW
 /// );
 /// ```
 pub fn extract_video_id(url: &str) -> Option<String> {
-    use regex::Regex;
-    use std::sync::LazyLock;
-
     static RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             r"(?:youtube\.com/(?:[^/]+/.+/|(?:v|e(?:mbed)?)/|.*[?&]v=)|youtu\.be/)([^&?/\s]{11})",
@@ -52,60 +62,29 @@ pub fn extract_video_id(url: &str) -> Option<String> {
     RE.captures(url).map(|c| c[1].to_string())
 }
 
-/// Extract the page title and the best caption track URL from raw YouTube page HTML.
+/// Fetch the INNERTUBE_API_KEY embedded in the YouTube watch page HTML.
+pub fn extract_innertube_key(html: &str) -> Option<String> {
+    RE_INNERTUBE_KEY.captures(html).map(|c| c[1].to_string())
+}
+
+/// Extract the page title from HTML.
+fn extract_title(html: &str) -> Option<String> {
+    RE_TITLE.captures(html).map(|c| c[1].trim().to_string())
+}
+
+/// Parse the captions track list from an Innertube player API JSON response.
 ///
-/// Returns `Err` when transcripts are disabled or unavailable.
-pub fn extract_caption_info(html: &str, lang: Option<&str>) -> Result<(String, String)> {
-    // Title
-    let title = {
-        use regex::Regex;
-        use std::sync::LazyLock;
-        static RE_TITLE: LazyLock<Regex> =
-            LazyLock::new(|| Regex::new(r"<title>([^<]*)</title>").expect("invalid title regex"));
-        RE_TITLE
-            .captures(html)
-            .map(|c| c[1].trim().to_string())
-            .unwrap_or_else(|| "Unknown".into())
-    };
-
-    if html.contains("class=\"g-recaptcha\"") {
-        anyhow::bail!("YouTube rate-limit: CAPTCHA required");
-    }
-
-    // Split on the captions JSON key
-    let parts: Vec<&str> = html.splitn(2, "\"captions\":").collect();
-    if parts.len() < 2 {
-        if !html.contains("\"playabilityStatus\":") {
-            anyhow::bail!("Video unavailable");
-        }
-        anyhow::bail!("Transcript is disabled for this video");
-    }
-
-    // Normalise newlines to spaces so the regex can match across line boundaries.
-    let rest = parts[1].replace('\n', " ");
-
-    // Use a regex to tolerate optional whitespace between the comma and the key.
-    use regex::Regex;
-    use std::sync::LazyLock;
-    static RE_VD: LazyLock<Regex> =
-        LazyLock::new(|| Regex::new(r#",\s*"videoDetails""#).expect("invalid regex"));
-
-    let captions_raw = RE_VD
-        .find(&rest)
-        .map(|m| rest[..m.start()].trim().to_string())
-        .ok_or_else(|| anyhow!("Malformed captions JSON: videoDetails separator not found"))?;
-
-    let captions: serde_json::Value = serde_json::from_str(&captions_raw)?;
-    let renderer = &captions["playerCaptionsTracklistRenderer"];
-
-    if renderer.is_null() {
-        anyhow::bail!("Transcript is disabled for this video");
-    }
-
-    let tracks = renderer["captionTracks"]
+/// Returns `(title, caption_url)`. The `&fmt=srv3` suffix is stripped from the
+/// caption URL so that YouTube serves plain XML instead of the srv3 format.
+pub fn extract_caption_info_from_innertube(
+    innertube_json: &serde_json::Value,
+    page_title: &str,
+    lang: Option<&str>,
+) -> Result<(String, String)> {
+    let tracks = innertube_json["captions"]["playerCaptionsTracklistRenderer"]["captionTracks"]
         .as_array()
         .filter(|t| !t.is_empty())
-        .ok_or_else(|| anyhow!("No transcripts available for this video"))?;
+        .ok_or_else(|| anyhow!("No caption tracks available for this video"))?;
 
     let track = if let Some(lang_code) = lang {
         tracks
@@ -125,12 +104,14 @@ pub fn extract_caption_info(html: &str, lang: Option<&str>) -> Result<(String, S
         tracks.first().unwrap()
     };
 
-    let url = track["baseUrl"]
+    let raw_url = track["baseUrl"]
         .as_str()
-        .ok_or_else(|| anyhow!("Missing baseUrl in caption track"))?
-        .to_string();
+        .ok_or_else(|| anyhow!("Missing baseUrl in caption track"))?;
 
-    Ok((title, url))
+    // Strip &fmt=srv3 if present; without it YouTube returns plain XML.
+    let url = raw_url.replace("&fmt=srv3", "");
+
+    Ok((page_title.to_string(), url))
 }
 
 /// Parse YouTube transcript XML into a list of [`TranscriptLine`]s.
@@ -177,13 +158,13 @@ pub fn parse_transcript_xml(xml: &str) -> Result<Vec<TranscriptLine>> {
     Ok(lines)
 }
 
-/// Fetch the full transcript for a YouTube video.
+/// Fetch the full transcript for a YouTube video via the Innertube player API.
 ///
-/// # Arguments
-///
-/// * `client` – shared impit HTTP client
-/// * `video_id` – 11-character YouTube video ID
-/// * `lang` – optional BCP-47 language code (e.g. `"en"`, `"ja"`)
+/// Flow:
+/// 1. GET the watch page to extract `INNERTUBE_API_KEY` and the page title
+/// 2. POST to `youtubei/v1/player` with an Android client context
+/// 3. Extract the caption track URL from the JSON response
+/// 4. GET the transcript XML and parse it
 pub async fn fetch_transcript(
     client: &HttpClient,
     video_id: &str,
@@ -191,41 +172,60 @@ pub async fn fetch_transcript(
 ) -> Result<Transcript> {
     use impit::request::RequestOptions;
 
-    let url = format!("https://www.youtube.com/watch?v={video_id}");
+    // Step 1: fetch watch page for INNERTUBE_API_KEY + title
+    let watch_url = format!("https://www.youtube.com/watch?v={video_id}");
+    let page_resp = client
+        .get(watch_url, None, None)
+        .await
+        .map_err(|e| anyhow!("Failed to fetch YouTube page: {e}"))?;
+    let page_html = page_resp
+        .text()
+        .await
+        .map_err(|e| anyhow!("Failed to read YouTube page: {e}"))?;
 
+    let api_key = extract_innertube_key(&page_html)
+        .ok_or_else(|| anyhow!("INNERTUBE_API_KEY not found in page"))?;
+    let title = extract_title(&page_html).unwrap_or_else(|| video_id.to_string());
+
+    // Step 2: POST to Innertube player API with Android client
+    let innertube_url = format!("{INNERTUBE_URL}{api_key}");
+    let body_json = format!("{INNERTUBE_CLIENT}{video_id}\"}}");
+    let body_bytes = body_json.into_bytes();
+
+    let mut headers = vec![("Content-Type".into(), "application/json".into())];
+    if let Some(l) = lang {
+        headers.push(("Accept-Language".into(), l.into()));
+    }
     let options = RequestOptions {
-        headers: {
-            let mut h = vec![("User-Agent".into(), USER_AGENT.into())];
-            if let Some(l) = lang {
-                h.push(("Accept-Language".into(), l.into()));
-            }
-            h
-        },
+        headers,
         timeout: None,
         http3_prior_knowledge: false,
     };
 
-    let response = client
-        .get(url, None, Some(options))
+    let innertube_resp = client
+        .post(innertube_url.clone(), Some(body_bytes), Some(options))
         .await
-        .map_err(|e| anyhow!("HTTP error fetching YouTube page: {e}"))?;
-
-    let html = response
+        .map_err(|e| anyhow!("Failed to call Innertube API: {e}"))?;
+    let innertube_body = innertube_resp
         .text()
         .await
-        .map_err(|e| anyhow!("Failed to read YouTube page body: {e}"))?;
+        .map_err(|e| anyhow!("Failed to read Innertube response: {e}"))?;
 
-    let (title, transcript_url) = extract_caption_info(&html, lang)?;
+    let innertube_json: serde_json::Value = serde_json::from_str(&innertube_body)
+        .map_err(|e| anyhow!("Failed to parse Innertube JSON: {e}"))?;
 
-    let xml_response = client
-        .get(transcript_url, None, None)
+    // Step 3: extract caption URL
+    let (title, caption_url) = extract_caption_info_from_innertube(&innertube_json, &title, lang)?;
+
+    // Step 4: fetch and parse the transcript XML
+    let xml_resp = client
+        .get(caption_url, None, None)
         .await
-        .map_err(|e| anyhow!("HTTP error fetching transcript XML: {e}"))?;
-
-    let xml = xml_response
+        .map_err(|e| anyhow!("Failed to fetch transcript XML: {e}"))?;
+    let xml = xml_resp
         .text()
         .await
-        .map_err(|e| anyhow!("Failed to read transcript XML body: {e}"))?;
+        .map_err(|e| anyhow!("Failed to read transcript XML: {e}"))?;
 
     let lines = parse_transcript_xml(&xml)?;
 
@@ -267,55 +267,60 @@ mod tests {
         assert_eq!(extract_video_id("https://www.youtube.com/"), None);
     }
 
-    // ── extract_caption_info ─────────────────────────────────────────────────
+    // ── extract_innertube_key ────────────────────────────────────────────────
 
-    fn mock_youtube_html(base_url: &str, lang: &str) -> String {
-        format!(
-            r#"<html><head><title>Test Video - YouTube</title></head><body>
-            <script>
-            var ytInitialPlayerResponse = {{
-                "captions":{{"playerCaptionsTracklistRenderer":{{"captionTracks":[
-                    {{"baseUrl":"{base_url}","languageCode":"{lang}"}}
-                ]}}}},
-                "videoDetails":{{"videoId":"abc"}}
-            }};
-            </script></body></html>"#
-        )
+    #[test]
+    fn extracts_innertube_key() {
+        let html = r#"var config = {"INNERTUBE_API_KEY": "AIzaSyTest123"};"#;
+        assert_eq!(extract_innertube_key(html), Some("AIzaSyTest123".into()));
+    }
+
+    // ── extract_caption_info_from_innertube ──────────────────────────────────
+
+    #[test]
+    fn extracts_caption_url_from_innertube() {
+        let json: serde_json::Value = serde_json::json!({
+            "captions": {
+                "playerCaptionsTracklistRenderer": {
+                    "captionTracks": [
+                        {"baseUrl": "https://example.com/timedtext?lang=en", "languageCode": "en"}
+                    ]
+                }
+            }
+        });
+        let (_, url) = extract_caption_info_from_innertube(&json, "Test Video", None).unwrap();
+        assert_eq!(url, "https://example.com/timedtext?lang=en");
     }
 
     #[test]
-    fn extracts_title_and_caption_url() {
-        let html = mock_youtube_html("https://example.com/transcript", "en");
-        let (title, url) = extract_caption_info(&html, None).unwrap();
-        assert_eq!(title, "Test Video - YouTube");
-        assert_eq!(url, "https://example.com/transcript");
+    fn strips_fmt_srv3_from_caption_url() {
+        let json: serde_json::Value = serde_json::json!({
+            "captions": {
+                "playerCaptionsTracklistRenderer": {
+                    "captionTracks": [
+                        {"baseUrl": "https://example.com/timedtext?lang=en&fmt=srv3", "languageCode": "en"}
+                    ]
+                }
+            }
+        });
+        let (_, url) = extract_caption_info_from_innertube(&json, "Title", None).unwrap();
+        assert_eq!(url, "https://example.com/timedtext?lang=en");
     }
 
     #[test]
     fn selects_language_track() {
-        let html = format!(
-            r#"<title>V</title>
-            "captions":{{"playerCaptionsTracklistRenderer":{{"captionTracks":[
-                {{"baseUrl":"https://example.com/en","languageCode":"en"}},
-                {{"baseUrl":"https://example.com/ja","languageCode":"ja"}}
-            ]}}}},
-            "videoDetails":{{}}"#
-        );
-        let (_, url) = extract_caption_info(&html, Some("ja")).unwrap();
+        let json: serde_json::Value = serde_json::json!({
+            "captions": {
+                "playerCaptionsTracklistRenderer": {
+                    "captionTracks": [
+                        {"baseUrl": "https://example.com/en", "languageCode": "en"},
+                        {"baseUrl": "https://example.com/ja", "languageCode": "ja"}
+                    ]
+                }
+            }
+        });
+        let (_, url) = extract_caption_info_from_innertube(&json, "Title", Some("ja")).unwrap();
         assert_eq!(url, "https://example.com/ja");
-    }
-
-    #[test]
-    fn err_when_no_captions_key() {
-        let html = r#"<html><body>"playabilityStatus":{}</body></html>"#;
-        assert!(extract_caption_info(html, None).is_err());
-    }
-
-    #[test]
-    fn err_when_video_unavailable() {
-        let html = r#"<html><body>no captions here</body></html>"#;
-        let err = extract_caption_info(html, None).unwrap_err();
-        assert!(err.to_string().contains("unavailable"));
     }
 
     // ── parse_transcript_xml ─────────────────────────────────────────────────
