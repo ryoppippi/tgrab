@@ -71,14 +71,20 @@
             };
           };
 
-          packages.default = craneLib.buildPackage (commonArgs // {
-            inherit cargoArtifacts;
-          });
+          packages.default = craneLib.buildPackage (
+            commonArgs
+            // {
+              inherit cargoArtifacts;
+            }
+          );
 
           checks = {
-            tests = craneLib.cargoTest (commonArgs // {
-              inherit cargoArtifacts;
-            });
+            tests = craneLib.cargoTest (
+              commonArgs
+              // {
+                inherit cargoArtifacts;
+              }
+            );
           };
 
           devShells.default = pkgs.mkShell {

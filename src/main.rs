@@ -1,5 +1,7 @@
 use agent_fetcher::{
-    bluesky, create_client, router::{route, Service}, twitter, youtube,
+    bluesky, create_client,
+    router::{Service, route},
+    twitter, youtube,
 };
 use anyhow::Result;
 use clap::Parser;

@@ -1,155 +1,94 @@
-use anyhow::{anyhow, Result};
-use std::sync::LazyLock;
-
+use anyhow::{Result, anyhow};
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::HttpClient;
 
-static RE_CONTENT: LazyLock<Regex> = LazyLock::new(|| {
-    // Matches both attribute orderings: property first or content first
-    Regex::new(
-        r#"(?x)
-        <meta[^>]*
-        (?:
-          property=["\']og:description["\'][^>]*content=["\']([^"\']*)["\']
-          |
-          content=["\']([^"\']*)["\'][^>]*property=["\']og:description["\']
-        )
-        [^>]*/?>
-        "#,
-    )
-    .expect("invalid og:description regex")
+static RE_URL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?:https?://)?(?:www\.)?(?:twitter\.com|x\.com)/(\w+)/status/(\d+)")
+        .expect("invalid Twitter URL regex")
 });
 
-/// Rewrite a Twitter / X URL to its FxEmbed proxy equivalent.
-///
-/// - `x.com` → `fixupx.com`
-/// - `twitter.com` (with or without `www.`) → `fxtwitter.com`
+/// Build the fxtwitter JSON API URL from a Twitter / X post URL.
 ///
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::twitter::rewrite_url;
+/// use agent_fetcher::twitter::api_url;
 /// assert_eq!(
-///     rewrite_url("https://x.com/user/status/123"),
-///     "https://fixupx.com/user/status/123"
+///     api_url("https://x.com/user/status/123456"),
+///     Some("https://api.fxtwitter.com/user/status/123456".into())
 /// );
 /// ```
-pub fn rewrite_url(url: &str) -> String {
-    url.replace("://x.com/", "://fixupx.com/")
-        .replace("://www.twitter.com/", "://fxtwitter.com/")
-        .replace("://twitter.com/", "://fxtwitter.com/")
+pub fn api_url(url: &str) -> Option<String> {
+    RE_URL
+        .captures(url)
+        .map(|caps| format!("https://api.fxtwitter.com/{}/status/{}", &caps[1], &caps[2]))
 }
 
-/// Decode common HTML entities from an attribute value.
-fn decode_entities(s: &str) -> String {
-    s.replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
-        .replace("&nbsp;", " ")
-}
-
-/// Extract the post text from an FxEmbed HTML page via the `og:description` meta tag.
-pub fn extract_content(html: &str) -> Option<String> {
-    RE_CONTENT
-        .captures(html)
-        .map(|caps| {
-            // Group 1 = property-first; group 2 = content-first
-            caps.get(1)
-                .or_else(|| caps.get(2))
-                .map(|m| decode_entities(m.as_str()))
-        })
-        .flatten()
-}
-
-/// Fetch a Twitter / X post via the FxEmbed proxy and return its text content.
+/// Fetch a Twitter / X post via the fxtwitter JSON API and return formatted text.
 pub async fn fetch_post(client: &HttpClient, url: &str) -> Result<String> {
-    let proxy_url = rewrite_url(url);
+    let api = api_url(url).ok_or_else(|| anyhow!("Could not parse Twitter URL: {url}"))?;
 
     let response = client
-        .get(proxy_url.clone(), None, None)
+        .get(api.clone(), None, None)
         .await
-        .map_err(|e| anyhow!("HTTP error fetching {proxy_url}: {e}"))?;
+        .map_err(|e| anyhow!("HTTP error fetching {api}: {e}"))?;
 
-    let html = response
+    let body = response
         .text()
         .await
         .map_err(|e| anyhow!("Failed to read response body: {e}"))?;
 
-    extract_content(&html).ok_or_else(|| anyhow!("Could not extract post content from FxEmbed response"))
+    let json: serde_json::Value = serde_json::from_str(&body)?;
+
+    let tweet = &json["tweet"];
+    let text = tweet["text"]
+        .as_str()
+        .ok_or_else(|| anyhow!("No text field in fxtwitter response"))?;
+    let author = tweet["author"]["screen_name"].as_str().unwrap_or("unknown");
+
+    Ok(format!("@{author}:\n\n{text}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ── rewrite_url ───────────────────────────────────────────────────────────
-
     #[test]
-    fn rewrites_x_com() {
+    fn api_url_from_x_com() {
         assert_eq!(
-            rewrite_url("https://x.com/user/status/123456"),
-            "https://fixupx.com/user/status/123456"
+            api_url("https://x.com/user/status/123456"),
+            Some("https://api.fxtwitter.com/user/status/123456".into())
         );
     }
 
     #[test]
-    fn rewrites_twitter_com() {
+    fn api_url_from_twitter_com() {
         assert_eq!(
-            rewrite_url("https://twitter.com/user/status/123456"),
-            "https://fxtwitter.com/user/status/123456"
+            api_url("https://twitter.com/user/status/123456"),
+            Some("https://api.fxtwitter.com/user/status/123456".into())
         );
     }
 
     #[test]
-    fn rewrites_www_twitter_com() {
+    fn api_url_from_www_twitter_com() {
         assert_eq!(
-            rewrite_url("https://www.twitter.com/user/status/123456"),
-            "https://fxtwitter.com/user/status/123456"
+            api_url("https://www.twitter.com/user/status/123456"),
+            Some("https://api.fxtwitter.com/user/status/123456".into())
         );
     }
 
     #[test]
-    fn preserves_path_and_query() {
+    fn api_url_preserves_user_and_id() {
         assert_eq!(
-            rewrite_url("https://x.com/rustlang/status/9999?s=20"),
-            "https://fixupx.com/rustlang/status/9999?s=20"
-        );
-    }
-
-    // ── extract_content ───────────────────────────────────────────────────────
-
-    #[test]
-    fn extracts_og_description_property_first() {
-        let html = r#"<html><head>
-            <meta property="og:description" content="Hello tweet!" />
-        </head></html>"#;
-        assert_eq!(extract_content(html), Some("Hello tweet!".into()));
-    }
-
-    #[test]
-    fn extracts_og_description_content_first() {
-        let html = r#"<html><head>
-            <meta content="Content first order" property="og:description" />
-        </head></html>"#;
-        assert_eq!(extract_content(html), Some("Content first order".into()));
-    }
-
-    #[test]
-    fn decodes_html_entities_in_content() {
-        let html = r#"<meta property="og:description" content="Rock &amp; Roll &#39;til dawn" />"#;
-        assert_eq!(
-            extract_content(html),
-            Some("Rock & Roll 'til dawn".into())
+            api_url("https://x.com/rustlang/status/9999"),
+            Some("https://api.fxtwitter.com/rustlang/status/9999".into())
         );
     }
 
     #[test]
-    fn returns_none_when_no_og_description() {
-        let html = r#"<html><head><title>No meta here</title></head></html>"#;
-        assert_eq!(extract_content(html), None);
+    fn api_url_none_for_non_status_url() {
+        assert_eq!(api_url("https://x.com/user"), None);
     }
 }

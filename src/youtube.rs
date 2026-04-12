@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
-use quick_xml::events::Event;
+use anyhow::{Result, anyhow};
 use quick_xml::Reader;
+use quick_xml::events::Event;
 
 use crate::HttpClient;
 
@@ -22,8 +22,7 @@ pub struct Transcript {
     pub lines: Vec<TranscriptLine>,
 }
 
-const USER_AGENT: &str =
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 \
+const USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 \
      (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
 /// Extract a YouTube video ID from a URL.

@@ -1,69 +1,102 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
+use regex::Regex;
+use std::sync::LazyLock;
 
-use crate::{twitter::extract_content, HttpClient};
+use crate::HttpClient;
 
-/// Rewrite a Bluesky URL to its FxEmbed proxy equivalent.
-///
-/// `bsky.app` → `fxbsky.app`
+static RE_URL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"(?:https?://)?bsky\.app/profile/([^/]+)/post/([A-Za-z0-9]+)")
+        .expect("invalid Bluesky URL regex")
+});
+
+/// Extract (handle, rkey) from a Bluesky post URL.
 ///
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::bluesky::rewrite_url;
+/// use agent_fetcher::bluesky::parse_url;
 /// assert_eq!(
-///     rewrite_url("https://bsky.app/profile/user.bsky.social/post/abc"),
-///     "https://fxbsky.app/profile/user.bsky.social/post/abc"
+///     parse_url("https://bsky.app/profile/user.bsky.social/post/abc123"),
+///     Some(("user.bsky.social".into(), "abc123".into()))
 /// );
 /// ```
-pub fn rewrite_url(url: &str) -> String {
-    url.replace("://bsky.app/", "://fxbsky.app/")
+pub fn parse_url(url: &str) -> Option<(String, String)> {
+    RE_URL
+        .captures(url)
+        .map(|c| (c[1].to_string(), c[2].to_string()))
 }
 
-/// Fetch a Bluesky post via the FxEmbed proxy and return its text content.
+/// Fetch a Bluesky post via the AT Protocol public API and return formatted text.
+///
+/// Flow:
+/// 1. Resolve the handle to a DID via `com.atproto.identity.resolveHandle`
+/// 2. Fetch the post thread via `app.bsky.feed.getPostThread`
 pub async fn fetch_post(client: &HttpClient, url: &str) -> Result<String> {
-    let proxy_url = rewrite_url(url);
+    let (handle, rkey) =
+        parse_url(url).ok_or_else(|| anyhow!("Could not parse Bluesky URL: {url}"))?;
 
-    let response = client
-        .get(proxy_url.clone(), None, None)
+    // Resolve handle → DID
+    let resolve_url = format!(
+        "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?handle={handle}"
+    );
+    let resolve_resp = client
+        .get(resolve_url.clone(), None, None)
         .await
-        .map_err(|e| anyhow!("HTTP error fetching {proxy_url}: {e}"))?;
-
-    let html = response
+        .map_err(|e| anyhow!("HTTP error resolving handle: {e}"))?;
+    let resolve_body = resolve_resp
         .text()
         .await
-        .map_err(|e| anyhow!("Failed to read response body: {e}"))?;
+        .map_err(|e| anyhow!("Failed to read resolve response: {e}"))?;
+    let resolve_json: serde_json::Value = serde_json::from_str(&resolve_body)?;
+    let did = resolve_json["did"]
+        .as_str()
+        .ok_or_else(|| anyhow!("Could not resolve handle '{handle}' to a DID"))?;
 
-    extract_content(&html)
-        .ok_or_else(|| anyhow!("Could not extract post content from FxEmbed response"))
+    // Fetch post thread
+    let at_uri = format!("at://{did}/app.bsky.feed.post/{rkey}");
+    let thread_url =
+        format!("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri={at_uri}");
+    let thread_resp = client
+        .get(thread_url.clone(), None, None)
+        .await
+        .map_err(|e| anyhow!("HTTP error fetching post thread: {e}"))?;
+    let thread_body = thread_resp
+        .text()
+        .await
+        .map_err(|e| anyhow!("Failed to read thread response: {e}"))?;
+    let thread_json: serde_json::Value = serde_json::from_str(&thread_body)?;
+
+    let post = &thread_json["thread"]["post"];
+    let text = post["record"]["text"]
+        .as_str()
+        .ok_or_else(|| anyhow!("No text in post record"))?;
+    let author = post["author"]["handle"].as_str().unwrap_or(&handle);
+
+    Ok(format!("@{author} on Bluesky:\n\n{text}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // ── rewrite_url ───────────────────────────────────────────────────────────
-
     #[test]
-    fn rewrites_bsky_app() {
+    fn parse_url_handle_and_rkey() {
         assert_eq!(
-            rewrite_url("https://bsky.app/profile/user.bsky.social/post/abc123"),
-            "https://fxbsky.app/profile/user.bsky.social/post/abc123"
+            parse_url("https://bsky.app/profile/user.bsky.social/post/abc123"),
+            Some(("user.bsky.social".into(), "abc123".into()))
         );
     }
 
     #[test]
-    fn rewrites_did_profile() {
+    fn parse_url_did_profile() {
         assert_eq!(
-            rewrite_url("https://bsky.app/profile/did:plc:abc123/post/xyz789"),
-            "https://fxbsky.app/profile/did:plc:abc123/post/xyz789"
+            parse_url("https://bsky.app/profile/did:plc:abc123/post/xyz789"),
+            Some(("did:plc:abc123".into(), "xyz789".into()))
         );
     }
 
     #[test]
-    fn preserves_full_path() {
-        assert_eq!(
-            rewrite_url("https://bsky.app/profile/handle.bsky.social/post/3kv7"),
-            "https://fxbsky.app/profile/handle.bsky.social/post/3kv7"
-        );
+    fn parse_url_none_for_non_post() {
+        assert_eq!(parse_url("https://bsky.app/profile/user.bsky.social"), None);
     }
 }
