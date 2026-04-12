@@ -33,9 +33,9 @@ async fn main() -> Result<()> {
             println!("# {}", transcript.title);
             println!();
             for line in &transcript.lines {
-                print!("{} ", line.text);
+                let secs = line.offset as u64;
+                println!("[{}:{:02}] {}", secs / 60, secs % 60, line.text);
             }
-            println!();
         }
         Service::Twitter(url) => {
             let content = twitter::fetch_post(&client, &url).await?;
