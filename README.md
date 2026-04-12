@@ -40,21 +40,24 @@ nix run github:ryoppippi/tgrab -- https://bsky.app/profile/user.bsky.social/post
 
 ## Supported URL patterns
 
-| Service | Patterns |
-|---|---|
-| YouTube | `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/`, `youtube.com/v/`, `m.youtube.com/watch?v=` |
-| Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`, `www.twitter.com/*/status/*` |
-| Bluesky | `bsky.app/profile/*/post/*` |
+| Service     | Patterns                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------- |
+| YouTube     | `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/`, `youtube.com/v/`, `m.youtube.com/watch?v=` |
+| Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`, `www.twitter.com/*/status/*`                            |
+| Bluesky     | `bsky.app/profile/*/post/*`                                                                           |
 
 ## Agent Skill
 
 This repo ships a skill compatible with the [Agent Skills Specification](https://agentskills.io).
 
-### Install via skills CLI
+<details>
+<summary>Install via skills CLI</summary>
 
 ```sh
 npx skills add ryoppippi/tgrab
 ```
+
+</details>
 
 <details>
 <summary>Install via Nix (agent-skills-nix)</summary>
@@ -62,6 +65,7 @@ npx skills add ryoppippi/tgrab
 Using [agent-skills-nix](https://github.com/Kyure-A/agent-skills-nix) with Home Manager:
 
 **flake.nix**
+
 ```nix
 inputs = {
   agent-skills.url = "github:Kyure-A/agent-skills-nix";
@@ -73,6 +77,7 @@ inputs = {
 ```
 
 **home.nix**
+
 ```nix
 programs.agent-skills = {
   enable = true;

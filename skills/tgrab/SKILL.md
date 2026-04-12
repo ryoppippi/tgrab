@@ -41,11 +41,11 @@ nix run github:ryoppippi/tgrab -- https://bsky.app/profile/user.bsky.social/post
 
 ## Supported URL Patterns
 
-| Service     | Patterns                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------ |
-| YouTube     | `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/`, `m.youtube.com/watch?v=`       |
-| Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`                                               |
-| Bluesky     | `bsky.app/profile/*/post/*`                                                                |
+| Service     | Patterns                                                                            |
+| ----------- | ----------------------------------------------------------------------------------- |
+| YouTube     | `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/`, `m.youtube.com/watch?v=` |
+| Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`                                        |
+| Bluesky     | `bsky.app/profile/*/post/*`                                                         |
 
 ## Output Format
 

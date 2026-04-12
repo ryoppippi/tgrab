@@ -66,7 +66,7 @@
                 # Use rustfmt from the pinned toolchain
                 package = toolchain;
               };
-              nixfmt.enable = true;
+              oxfmt.enable = true;
               taplo.enable = true;
             };
           };
