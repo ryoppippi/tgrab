@@ -67,10 +67,14 @@ nix build
 nix flake check
 ```
 
-## Implementation notes
+## Acknowledgements
 
-- HTTP client: [impit](https://github.com/apify/impit) with Chrome 131 TLS fingerprinting, bypassing bot detection
-- YouTube transcripts: fetched via the Innertube player API (Android client) to avoid session-bound token restrictions, then parsed from TimedText XML
-- Twitter/X: fetched via [fxtwitter](https://github.com/FixTweet/FxTwitter) JSON API (`api.fxtwitter.com`)
-- Bluesky: fetched via the AT Protocol public API (`public.api.bsky.app`)
-- Nix build: [crane](https://github.com/ipetkov/crane) handles git dependencies and `[patch.crates-io]` via `cargo vendor`
+- [impit](https://github.com/apify/impit) — browser-impersonating HTTP client used for YouTube requests
+- [FxTwitter](https://github.com/FixTweet/FxTwitter) — Twitter/X embed proxy providing the JSON API
+- [Bluesky AT Protocol](https://atproto.com/) — public API used to fetch Bluesky posts
+- [@playzone/youtube-transcript](https://www.npmjs.com/package/@playzone/youtube-transcript) — reference implementation for the Innertube API approach
+- [crane](https://github.com/ipetkov/crane) — Nix library for building Rust packages with git dependencies
+
+## License
+
+[MIT](./LICENSE)
