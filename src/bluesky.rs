@@ -66,6 +66,12 @@ pub async fn fetch_post(client: &HttpClient, url: &str) -> Result<String> {
         .map_err(|e| anyhow!("Failed to read thread response: {e}"))?;
     let thread_json: serde_json::Value = serde_json::from_str(&thread_body)?;
 
+    // Surface API-level errors (e.g. NotFound, blocked)
+    if let Some(err) = thread_json["error"].as_str() {
+        let msg = thread_json["message"].as_str().unwrap_or(err);
+        anyhow::bail!("Bluesky API error: {msg}");
+    }
+
     let post = &thread_json["thread"]["post"];
     let text = post["record"]["text"]
         .as_str()
