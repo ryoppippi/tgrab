@@ -34,6 +34,8 @@ nix run github:ryoppippi/agent-fetcher -- https://twitter.com/user/status/123456
 nix run github:ryoppippi/agent-fetcher -- https://bsky.app/profile/user.bsky.social/post/abc123
 ```
 
+> For more complex pages requiring JavaScript rendering or authentication, use [agent-browser](https://github.com/vercel-labs/agent-browser) instead.
+
 ## Supported URL patterns
 
 | Service | Patterns |
@@ -41,6 +43,48 @@ nix run github:ryoppippi/agent-fetcher -- https://bsky.app/profile/user.bsky.soc
 | YouTube | `youtube.com/watch?v=`, `youtu.be/`, `youtube.com/embed/`, `youtube.com/v/`, `m.youtube.com/watch?v=` |
 | Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`, `www.twitter.com/*/status/*` |
 | Bluesky | `bsky.app/profile/*/post/*` |
+
+## Agent Skill
+
+This repo ships a skill compatible with the [Agent Skills Specification](https://agentskills.io).
+
+### Install via skills CLI
+
+```sh
+npx skills add ryoppippi/agent-fetcher
+```
+
+<details>
+<summary>Install via Nix (agent-skills-nix)</summary>
+
+Using [agent-skills-nix](https://github.com/Kyure-A/agent-skills-nix) with Home Manager:
+
+**flake.nix**
+```nix
+inputs = {
+  agent-skills.url = "github:Kyure-A/agent-skills-nix";
+  agent-fetcher = {
+    url = "github:ryoppippi/agent-fetcher";
+    flake = false;
+  };
+};
+```
+
+**home.nix**
+```nix
+programs.agent-skills = {
+  enable = true;
+  sources.ryoppippi = {
+    input = "agent-fetcher";
+    subdir = "skills";
+    idPrefix = "ryoppippi";
+  };
+  skills.enable = [ "ryoppippi/agent-fetcher" ];
+  targets.claude.enable = true;
+};
+```
+
+</details>
 
 ## Development
 
