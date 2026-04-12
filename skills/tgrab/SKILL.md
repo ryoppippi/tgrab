@@ -1,9 +1,9 @@
 ---
-name: agent-fetcher
+name: tgrab
 description: Fetch text content from YouTube transcripts, Twitter/X posts, and Bluesky posts. Use this when the user shares a YouTube, Twitter/X, or Bluesky URL and wants to read its content.
 ---
 
-# agent-fetcher
+# tgrab
 
 ## When to Use This Skill
 
@@ -20,23 +20,23 @@ For more complex pages requiring JavaScript rendering or authentication, use the
 Always run via a subagent to keep the main conversation context clean.
 
 ```sh
-nix run github:ryoppippi/agent-fetcher -- <url>
+nix run github:ryoppippi/tgrab -- <url>
 ```
 
 ### Examples
 
 ```sh
 # YouTube transcript
-nix run github:ryoppippi/agent-fetcher -- https://www.youtube.com/watch?v=dQw4w9WgXcQ
+nix run github:ryoppippi/tgrab -- https://www.youtube.com/watch?v=dQw4w9WgXcQ
 
 # YouTube transcript in Japanese
-nix run github:ryoppippi/agent-fetcher -- --lang ja https://www.youtube.com/watch?v=dQw4w9WgXcQ
+nix run github:ryoppippi/tgrab -- --lang ja https://www.youtube.com/watch?v=dQw4w9WgXcQ
 
 # Twitter / X post
-nix run github:ryoppippi/agent-fetcher -- https://x.com/user/status/1234567890
+nix run github:ryoppippi/tgrab -- https://x.com/user/status/1234567890
 
 # Bluesky post
-nix run github:ryoppippi/agent-fetcher -- https://bsky.app/profile/user.bsky.social/post/abc123
+nix run github:ryoppippi/tgrab -- https://bsky.app/profile/user.bsky.social/post/abc123
 ```
 
 ## Supported URL Patterns

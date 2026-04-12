@@ -1,5 +1,5 @@
 {
-  description = "agent-fetcher";
+  description = "tgrab";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -92,7 +92,7 @@
             # Runs `cargo run` with the pinned toolchain and required flags.
             # Usage: nix run .#dev -- <url>
             program = builtins.toString (
-              pkgs.writeShellScript "agent-fetcher-dev" ''
+              pkgs.writeShellScript "tgrab-dev" ''
                 export RUSTFLAGS="--cfg reqwest_unstable"
                 exec ${toolchain}/bin/cargo run -- "$@"
               ''

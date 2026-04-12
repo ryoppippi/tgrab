@@ -1,14 +1,14 @@
 [package]
-name = "agent-fetcher"
+name = "tgrab"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "agent-fetcher"
+name = "tgrab"
 path = "src/main.rs"
 
 [lib]
-name = "agent_fetcher"
+name = "tgrab"
 path = "src/lib.rs"
 
 [dependencies]

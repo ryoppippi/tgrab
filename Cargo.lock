@@ -9,19 +9,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
-name = "agent-fetcher"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "impit",
- "quick-xml",
- "regex",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,6 +2025,19 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "tgrab"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "impit",
+ "quick-xml",
+ "regex",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

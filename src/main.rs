@@ -1,14 +1,14 @@
-use agent_fetcher::{
+use anyhow::Result;
+use clap::Parser;
+use tgrab::{
     bluesky, create_client,
     router::{Service, route},
     twitter, youtube,
 };
-use anyhow::Result;
-use clap::Parser;
 
 #[derive(Parser)]
 #[command(
-    name = "agent-fetcher",
+    name = "tgrab",
     about = "Fetch text content from YouTube, Twitter/X, and Bluesky"
 )]
 struct Cli {

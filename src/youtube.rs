@@ -45,7 +45,7 @@ static RE_TITLE: LazyLock<Regex> =
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::youtube::extract_video_id;
+/// use tgrab::youtube::extract_video_id;
 /// assert_eq!(
 ///     extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ"),
 ///     Some("dQw4w9WgXcQ".into())

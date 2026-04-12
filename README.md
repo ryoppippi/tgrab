@@ -1,4 +1,4 @@
-# agent-fetcher
+# tgrab
 
 A CLI tool that fetches text content from services that normally require a browser or login — YouTube transcripts, Twitter/X posts, and Bluesky posts.
 
@@ -6,7 +6,7 @@ A CLI tool that fetches text content from services that normally require a brows
 
 ```sh
 # Run directly without installing
-nix run github:ryoppippi/agent-fetcher -- <url>
+nix run github:ryoppippi/tgrab -- <url>
 ```
 
 The service is detected automatically from the URL.
@@ -14,24 +14,24 @@ The service is detected automatically from the URL.
 ### YouTube — transcript
 
 ```sh
-nix run github:ryoppippi/agent-fetcher -- https://www.youtube.com/watch?v=dQw4w9WgXcQ
-nix run github:ryoppippi/agent-fetcher -- https://youtu.be/dQw4w9WgXcQ
+nix run github:ryoppippi/tgrab -- https://www.youtube.com/watch?v=dQw4w9WgXcQ
+nix run github:ryoppippi/tgrab -- https://youtu.be/dQw4w9WgXcQ
 
 # Specify language
-nix run github:ryoppippi/agent-fetcher -- --lang ja https://www.youtube.com/watch?v=dQw4w9WgXcQ
+nix run github:ryoppippi/tgrab -- --lang ja https://www.youtube.com/watch?v=dQw4w9WgXcQ
 ```
 
 ### Twitter / X — post text
 
 ```sh
-nix run github:ryoppippi/agent-fetcher -- https://x.com/user/status/1234567890
-nix run github:ryoppippi/agent-fetcher -- https://twitter.com/user/status/1234567890
+nix run github:ryoppippi/tgrab -- https://x.com/user/status/1234567890
+nix run github:ryoppippi/tgrab -- https://twitter.com/user/status/1234567890
 ```
 
 ### Bluesky — post text
 
 ```sh
-nix run github:ryoppippi/agent-fetcher -- https://bsky.app/profile/user.bsky.social/post/abc123
+nix run github:ryoppippi/tgrab -- https://bsky.app/profile/user.bsky.social/post/abc123
 ```
 
 > For more complex pages requiring JavaScript rendering or authentication, use [agent-browser](https://github.com/vercel-labs/agent-browser) instead.
@@ -51,7 +51,7 @@ This repo ships a skill compatible with the [Agent Skills Specification](https:/
 ### Install via skills CLI
 
 ```sh
-npx skills add ryoppippi/agent-fetcher
+npx skills add ryoppippi/tgrab
 ```
 
 <details>
@@ -63,8 +63,8 @@ Using [agent-skills-nix](https://github.com/Kyure-A/agent-skills-nix) with Home 
 ```nix
 inputs = {
   agent-skills.url = "github:Kyure-A/agent-skills-nix";
-  agent-fetcher = {
-    url = "github:ryoppippi/agent-fetcher";
+  tgrab = {
+    url = "github:ryoppippi/tgrab";
     flake = false;
   };
 };
@@ -75,11 +75,11 @@ inputs = {
 programs.agent-skills = {
   enable = true;
   sources.ryoppippi = {
-    input = "agent-fetcher";
+    input = "tgrab";
     subdir = "skills";
     idPrefix = "ryoppippi";
   };
-  skills.enable = [ "ryoppippi/agent-fetcher" ];
+  skills.enable = [ "ryoppippi/tgrab" ];
   targets.claude.enable = true;
 };
 ```
@@ -105,7 +105,7 @@ nix fmt
 
 # Build binary
 nix build
-./result/bin/agent-fetcher --help
+./result/bin/tgrab --help
 
 # Run all checks (tests + format)
 nix flake check

@@ -39,7 +39,7 @@ static RE_BLUESKY: LazyLock<Regex> = LazyLock::new(|| {
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::router::{route, Service};
+/// use tgrab::router::{route, Service};
 /// assert_eq!(
 ///     route("https://www.youtube.com/watch?v=dQw4w9WgXcQ").unwrap(),
 ///     Service::YouTube("dQw4w9WgXcQ".into())

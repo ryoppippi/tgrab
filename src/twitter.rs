@@ -14,7 +14,7 @@ static RE_URL: LazyLock<Regex> = LazyLock::new(|| {
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::twitter::api_url;
+/// use tgrab::twitter::api_url;
 /// assert_eq!(
 ///     api_url("https://x.com/user/status/123456"),
 ///     Some("https://api.fxtwitter.com/user/status/123456".into())

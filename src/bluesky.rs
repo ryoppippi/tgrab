@@ -14,7 +14,7 @@ static RE_URL: LazyLock<Regex> = LazyLock::new(|| {
 /// # Examples
 ///
 /// ```
-/// use agent_fetcher::bluesky::parse_url;
+/// use tgrab::bluesky::parse_url;
 /// assert_eq!(
 ///     parse_url("https://bsky.app/profile/user.bsky.social/post/abc123"),
 ///     Some(("user.bsky.social".into(), "abc123".into()))
