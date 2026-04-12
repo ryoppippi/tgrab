@@ -1,0 +1,25 @@
+name: 'Setup Nix'
+description: 'Install Nix and configure caching'
+inputs:
+  cachix-auth-token:
+    description: 'Cachix authentication token'
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # v31.10.4
+      with:
+        github_access_token: ${{ github.token }}
+
+    - name: Setup Cachix (ryoppippi)
+      uses: cachix/cachix-action@1eb2ef646ac0255473d23a5907ad7b04ce94065c # v17
+      with:
+        name: ryoppippi
+        authToken: ${{ inputs.cachix-auth-token }}
+
+    - name: Cache Nix store
+      uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
+      with:
+        primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock') }}
+        restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
