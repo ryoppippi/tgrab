@@ -40,8 +40,8 @@ const USER_AGENT: &str =
 /// );
 /// ```
 pub fn extract_video_id(url: &str) -> Option<String> {
-    use std::sync::LazyLock;
     use regex::Regex;
+    use std::sync::LazyLock;
 
     static RE: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
@@ -59,8 +59,8 @@ pub fn extract_video_id(url: &str) -> Option<String> {
 pub fn extract_caption_info(html: &str, lang: Option<&str>) -> Result<(String, String)> {
     // Title
     let title = {
-        use std::sync::LazyLock;
         use regex::Regex;
+        use std::sync::LazyLock;
         static RE_TITLE: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"<title>([^<]*)</title>").expect("invalid title regex"));
         RE_TITLE
@@ -86,8 +86,8 @@ pub fn extract_caption_info(html: &str, lang: Option<&str>) -> Result<(String, S
     let rest = parts[1].replace('\n', " ");
 
     // Use a regex to tolerate optional whitespace between the comma and the key.
-    use std::sync::LazyLock;
     use regex::Regex;
+    use std::sync::LazyLock;
     static RE_VD: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r#",\s*"videoDetails""#).expect("invalid regex"));
 
