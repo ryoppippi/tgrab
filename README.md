@@ -1,5 +1,7 @@
 # tgrab
 
+[![built with nix](https://builtwithnix.org/badge.svg)](https://builtwithnix.org)
+
 A CLI tool that fetches text content from services that normally require a browser or login — YouTube transcripts, Twitter/X posts, and Bluesky posts.
 
 ## Usage
@@ -110,6 +112,37 @@ nix build
 # Run all checks (tests + format)
 nix flake check
 ```
+
+<details>
+<summary>Binary Cache (Cachix)</summary>
+
+Pre-built binaries are available via [Cachix](https://app.cachix.org/cache/ryoppippi), avoiding local compilation.
+
+```bash
+cachix use ryoppippi
+```
+
+Or add to your Nix configuration manually:
+
+```nix
+nix.settings = {
+  substituters = [ "https://ryoppippi.cachix.org" ];
+  trusted-public-keys = [ "ryoppippi.cachix.org-1:b2LbtWNvJeL/qb1B6TYOMK+apaCps4SCbzlPRfSQIms=" ];
+};
+```
+
+Or in your `flake.nix` via `nixConfig`:
+
+```nix
+{
+  nixConfig = {
+    extra-substituters = [ "https://ryoppippi.cachix.org" ];
+    extra-trusted-public-keys = [ "ryoppippi.cachix.org-1:b2LbtWNvJeL/qb1B6TYOMK+apaCps4SCbzlPRfSQIms=" ];
+  };
+}
+```
+
+</details>
 
 ## Acknowledgements
 
