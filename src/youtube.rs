@@ -82,12 +82,19 @@ pub fn extract_caption_info(html: &str, lang: Option<&str>) -> Result<(String, S
         anyhow::bail!("Transcript is disabled for this video");
     }
 
-    // Isolate the captions value up to the next top-level key
-    let captions_raw = parts[1]
-        .splitn(2, ",\"videoDetails\"")
-        .next()
-        .ok_or_else(|| anyhow!("Malformed captions JSON"))?
-        .replace('\n', "");
+    // Normalise newlines to spaces so the regex can match across line boundaries.
+    let rest = parts[1].replace('\n', " ");
+
+    // Use a regex to tolerate optional whitespace between the comma and the key.
+    use std::sync::LazyLock;
+    use regex::Regex;
+    static RE_VD: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r#",\s*"videoDetails""#).expect("invalid regex"));
+
+    let captions_raw = RE_VD
+        .find(&rest)
+        .map(|m| rest[..m.start()].trim().to_string())
+        .ok_or_else(|| anyhow!("Malformed captions JSON: videoDetails separator not found"))?;
 
     let captions: serde_json::Value = serde_json::from_str(&captions_raw)?;
     let renderer = &captions["playerCaptionsTracklistRenderer"];
@@ -183,7 +190,7 @@ pub async fn fetch_transcript(
     video_id: &str,
     lang: Option<&str>,
 ) -> Result<Transcript> {
-    use impit::request_options::RequestOptions;
+    use impit::request::RequestOptions;
 
     let url = format!("https://www.youtube.com/watch?v={video_id}");
 
