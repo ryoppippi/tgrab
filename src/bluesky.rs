@@ -105,4 +105,21 @@ mod tests {
     fn parse_url_none_for_non_post() {
         assert_eq!(parse_url("https://bsky.app/profile/user.bsky.social"), None);
     }
+
+    /// Run with: cargo test -- --ignored
+    #[tokio::test]
+    #[ignore]
+    async fn integration_fetch_post_bluesky() {
+        let client = crate::create_client().unwrap();
+        let result = fetch_post(
+            &client,
+            "https://bsky.app/profile/ryoppippi.com/post/3micmhqusx22q",
+        )
+        .await
+        .unwrap();
+
+        assert!(result.starts_with("@ryoppippi.com on Bluesky:"));
+        assert!(result.contains("明日これに出ます"));
+        assert!(result.contains("techworld.connpass.com"));
+    }
 }

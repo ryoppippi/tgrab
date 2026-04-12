@@ -91,4 +91,21 @@ mod tests {
     fn api_url_none_for_non_status_url() {
         assert_eq!(api_url("https://x.com/user"), None);
     }
+
+    /// Run with: cargo test -- --ignored
+    #[tokio::test]
+    #[ignore]
+    async fn integration_fetch_post_x_com() {
+        let client = crate::create_client().unwrap();
+        let result = fetch_post(
+            &client,
+            "https://x.com/ryoppippi/status/1909369320078999673",
+        )
+        .await
+        .unwrap();
+
+        assert!(result.starts_with("@ryoppippi:"));
+        assert!(result.contains("任意のサイトをMCP Serverに変えちゃうヤバいやつ作ったよ"));
+        assert!(result.contains("sitemcp"));
+    }
 }

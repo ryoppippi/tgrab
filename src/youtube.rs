@@ -358,4 +358,19 @@ mod tests {
         let lines = parse_transcript_xml(xml).unwrap();
         assert_eq!(lines.len(), 2);
     }
+
+    /// Run with: cargo test -- --ignored
+    #[tokio::test]
+    #[ignore]
+    async fn integration_fetch_transcript_youtube() {
+        let client = crate::create_client().unwrap();
+        let transcript = fetch_transcript(&client, "AEmHcFH1UgQ", None)
+            .await
+            .unwrap();
+
+        assert!(transcript.title.contains("Pi is All you Need"));
+        assert!(!transcript.lines.is_empty());
+        // First spoken line
+        assert!(transcript.lines[0].text.to_lowercase().contains("syntax"));
+    }
 }
