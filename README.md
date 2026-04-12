@@ -69,6 +69,7 @@ nix flake check
 
 ## Acknowledgements
 
+- [fetch-mcp](https://www.npmjs.com/package/fetch-mcp) — original inspiration for this project
 - [impit](https://github.com/apify/impit) — browser-impersonating HTTP client used for YouTube requests
 - [FxTwitter](https://github.com/FixTweet/FxTwitter) — Twitter/X embed proxy providing the JSON API
 - [Bluesky AT Protocol](https://atproto.com/) — public API used to fetch Bluesky posts
