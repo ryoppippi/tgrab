@@ -9,6 +9,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     crane.url = "github:ipetkov/crane";
+    git-hooks = {
+      url = "github:cachix/git-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -20,6 +24,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.treefmt-nix.flakeModule
+        inputs.git-hooks.flakeModule
       ];
 
       systems = [
@@ -68,6 +73,9 @@
               };
               oxfmt.enable = true;
               taplo.enable = true;
+              deadnix.enable = true;
+              statix.enable = true;
+              typos.enable = true;
             };
           };
 
@@ -77,6 +85,24 @@
               inherit cargoArtifacts;
             }
           );
+
+          pre-commit.settings = {
+            src = ./.;
+            package = pkgs.prek;
+            hooks = {
+              treefmt = {
+                enable = true;
+                package = config.treefmt.build.wrapper;
+              };
+              gitleaks = {
+                enable = true;
+                name = "gitleaks";
+                entry = "${pkgs.gitleaks}/bin/gitleaks protect --staged --config .gitleaks.toml";
+                language = "system";
+                pass_filenames = false;
+              };
+            };
+          };
 
           checks = {
             build = config.packages.default;
@@ -101,6 +127,7 @@
           };
 
           devShells.default = pkgs.mkShell {
+            inherit (config.pre-commit) shellHook;
             nativeBuildInputs = [
               toolchain
               config.treefmt.build.wrapper
