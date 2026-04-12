@@ -87,6 +87,18 @@
             );
           };
 
+          apps.dev = {
+            type = "app";
+            # Runs `cargo run` with the pinned toolchain and required flags.
+            # Usage: nix run .#dev -- <url>
+            program = builtins.toString (
+              pkgs.writeShellScript "agent-fetcher-dev" ''
+                export RUSTFLAGS="--cfg reqwest_unstable"
+                exec ${toolchain}/bin/cargo run -- "$@"
+              ''
+            );
+          };
+
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = [
               toolchain
