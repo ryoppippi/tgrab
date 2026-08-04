@@ -48,52 +48,11 @@ nix run github:ryoppippi/tgrab -- https://bsky.app/profile/user.bsky.social/post
 | Twitter / X | `x.com/*/status/*`, `twitter.com/*/status/*`, `www.twitter.com/*/status/*`                            |
 | Bluesky     | `bsky.app/profile/*/post/*`                                                                           |
 
-## Agent Skill
+## For agents
 
-This repo ships a skill compatible with the [Agent Skills Specification](https://agentskills.io).
-
-<details>
-<summary>Install via skills CLI</summary>
-
-```sh
-npx skills add ryoppippi/tgrab
-```
-
-</details>
-
-<details>
-<summary>Install via Nix (agent-skills-nix)</summary>
-
-Using [agent-skills-nix](https://github.com/Kyure-A/agent-skills-nix) with Home Manager:
-
-**flake.nix**
-
-```nix
-inputs = {
-  agent-skills.url = "github:Kyure-A/agent-skills-nix";
-  tgrab = {
-    url = "github:ryoppippi/tgrab";
-    flake = false;
-  };
-};
-```
-
-**home.nix**
-
-```nix
-programs.agent-skills = {
-  enable = true;
-  sources.ryoppippi = {
-    input = "tgrab";
-    subdir = "skills";
-    idPrefix = "ryoppippi";
-  };
-  skills.enable = [ "ryoppippi/tgrab" ];
-  targets.claude.enable = true;
-};
-```
-
-</details>
+`tgrab --help` prints the whole contract — supported URL patterns, output format
+per service, and examples. There is no separate skill or manual to install; point
+your agent at the binary and let it read `--help`.
 
 ## Development
 
