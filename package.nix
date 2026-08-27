@@ -24,6 +24,6 @@ craneLib.buildPackage (
     # Exposed for flake checks (e.g. cargoTest) so they reuse the same
     # source filter and dependency artifacts instead of rebuilding them.
     passthru = { inherit cargoArtifacts commonArgs; };
-    meta.platforms = import ./nix/systems.nix;
+    meta.platforms = import ./systems.nix;
   }
 )

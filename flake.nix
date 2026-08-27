@@ -27,7 +27,7 @@
         inputs.git-hooks.flakeModule
       ];
 
-      systems = import ./nix/systems.nix;
+      systems = import ./systems.nix;
 
       perSystem =
         {
