@@ -27,11 +27,7 @@
         inputs.git-hooks.flakeModule
       ];
 
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "aarch64-darwin"
-      ];
+      systems = import ./nix/systems.nix;
 
       perSystem =
         {
