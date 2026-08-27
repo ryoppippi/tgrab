@@ -65,6 +65,9 @@
 
           treefmt = {
             projectRootFile = "flake.nix";
+            settings.global.excludes = [
+              ".github/tagpr-template.md"
+            ];
             programs = {
               rustfmt = {
                 enable = true;

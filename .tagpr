@@ -1,0 +1,8 @@
+[tagpr]
+	releaseBranch = main
+	vPrefix = true
+	changelog = false
+	release = false
+	versionFile = Cargo.toml
+	template = .github/tagpr-template.md
+	postVersionCommand = nix develop --command cargo check --quiet && git add Cargo.lock
