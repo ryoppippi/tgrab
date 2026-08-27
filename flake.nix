@@ -38,12 +38,9 @@
         }:
         let
           toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-
-          # crane with the pinned rust-overlay toolchain
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
         in
         {
-          # Inject nixpkgs with rust-overlay applied
           _module.args.pkgs = import inputs.nixpkgs {
             inherit system;
             overlays = [ (import inputs.rust-overlay) ];
@@ -105,7 +102,7 @@
             type = "app";
             # Runs `cargo run` with the pinned toolchain and required flags.
             # Usage: nix run .#dev -- <url>
-            program = builtins.toString (
+            program = toString (
               pkgs.writeShellScript "tgrab-dev" ''
                 export RUSTFLAGS="--cfg reqwest_unstable"
                 exec ${toolchain}/bin/cargo run -- "$@"
