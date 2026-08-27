@@ -13,7 +13,7 @@ on:
 concurrency: tagpr
 
 jobs:
-  build_before_tag:
+  build_and_check_before_tag:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
@@ -27,15 +27,18 @@ jobs:
       - uses: ./.github/actions/setup-nix
         with:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - run: nix build .#default --no-link
+      - name: Build
+        run: nix build .#default --no-link
+      - name: Check
+        run: nix flake check -L
 
   tagpr:
-    needs: build_before_tag
+    needs: build_and_check_before_tag
     if: |
       always() &&
       (
         (github.event_name == 'pull_request' && startsWith(github.head_ref, 'tagpr-from-')) ||
-        (github.event_name != 'pull_request' && needs.build_before_tag.result == 'success')
+        (github.event_name != 'pull_request' && needs.build_and_check_before_tag.result == 'success')
       )
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
