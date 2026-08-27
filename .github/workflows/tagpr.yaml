@@ -13,8 +13,30 @@ on:
 concurrency: tagpr
 
 jobs:
+  build_before_tag:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - run: nix build .#default --no-link
+
   tagpr:
-    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'tagpr-from-')
+    needs: build_before_tag
+    if: |
+      always() &&
+      (
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'tagpr-from-')) ||
+        (github.event_name != 'pull_request' && needs.build_before_tag.result == 'success')
+      )
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     permissions:

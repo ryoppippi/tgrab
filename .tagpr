@@ -5,4 +5,4 @@
 	release = false
 	versionFile = Cargo.toml
 	template = .github/tagpr-template.md
-	postVersionCommand = nix develop --command cargo check --quiet && nix build .#default --no-link && git add Cargo.lock
+	postVersionCommand = nix develop --command cargo check --quiet && git add Cargo.lock
