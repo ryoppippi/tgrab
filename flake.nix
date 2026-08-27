@@ -27,11 +27,7 @@
         inputs.git-hooks.flakeModule
       ];
 
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "aarch64-darwin"
-      ];
+      systems = import ./systems.nix;
 
       perSystem =
         {
@@ -45,16 +41,6 @@
 
           # crane with the pinned rust-overlay toolchain
           craneLib = (inputs.crane.mkLib pkgs).overrideToolchain toolchain;
-
-          src = craneLib.cleanCargoSource ./.;
-
-          commonArgs = {
-            inherit src;
-            strictDeps = true;
-          };
-
-          # Build dependencies separately so they are cached across rebuilds
-          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
         in
         {
           # Inject nixpkgs with rust-overlay applied
@@ -82,12 +68,10 @@
             };
           };
 
-          packages.default = craneLib.buildPackage (
-            commonArgs
-            // {
-              inherit cargoArtifacts;
-            }
-          );
+          packages = {
+            tgrab = pkgs.callPackage ./package.nix { inherit craneLib; };
+            default = config.packages.tgrab;
+          };
 
           pre-commit.settings = {
             src = ./.;
@@ -110,9 +94,9 @@
           checks = {
             build = config.packages.default;
             tests = craneLib.cargoTest (
-              commonArgs
+              config.packages.default.passthru.commonArgs
               // {
-                inherit cargoArtifacts;
+                inherit (config.packages.default.passthru) cargoArtifacts;
               }
             );
           };
