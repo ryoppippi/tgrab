@@ -1,0 +1,33 @@
+name: tagpr
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+  workflow_dispatch:
+
+concurrency: tagpr
+
+jobs:
+  tagpr:
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'tagpr-from-')
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-nix
+      - id: tagpr
+        uses: Songmu/tagpr@d1b8138b7a31075141b6cd64103de9485ced7ac9 # v1.20.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
