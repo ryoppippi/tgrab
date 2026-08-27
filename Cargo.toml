@@ -1,6 +1,6 @@
 [package]
 name = "tgrab"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A CLI tool that fetches text content from services that normally require a browser or login"
 license = "MIT"
