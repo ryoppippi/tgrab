@@ -21,6 +21,8 @@ jobs:
       contents: write
       pull-requests: write
       issues: read
+    outputs:
+      tag: ${{ steps.tagpr.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -29,5 +31,23 @@ jobs:
       - uses: ./.github/actions/setup-nix
       - id: tagpr
         uses: Songmu/tagpr@d1b8138b7a31075141b6cd64103de9485ced7ac9 # v1.20.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: tagpr
+    if: needs.tagpr.outputs.tag != ''
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.tagpr.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-nix
+      - run: nix run nixpkgs#bun -- x changelogithub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
