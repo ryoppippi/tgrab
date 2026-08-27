@@ -13,31 +13,10 @@ on:
 concurrency: tagpr
 
 jobs:
-  build_and_check_before_tag:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: main
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-nix
-      - name: Build
-        run: nix build .#default --no-link
-      - name: Check
-        run: nix flake check -L
-
   tagpr:
-    needs: build_and_check_before_tag
-    if: |
-      always() &&
-      (
-        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'tagpr-from-')) ||
-        (github.event_name != 'pull_request' && needs.build_and_check_before_tag.result == 'success')
-      )
+    # Label events only matter on tagpr's own release PR; skip the rest so
+    # ordinary PR labeling doesn't spend runner time.
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'tagpr-from-')
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     permissions:
@@ -52,6 +31,13 @@ jobs:
           ref: main
           fetch-depth: 0
       - uses: ./.github/actions/setup-nix
+      # Gate the tag on a green build + check of main, sharing this job's Nix
+      # store so nothing is rebuilt from scratch.
+      - parallel:
+          - name: Build
+            run: nix build .#default --no-link
+          - name: Check
+            run: nix flake check -L
       - id: tagpr
         uses: Songmu/tagpr@d1b8138b7a31075141b6cd64103de9485ced7ac9 # v1.20.1
         env:
