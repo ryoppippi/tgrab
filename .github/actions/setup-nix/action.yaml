@@ -1,25 +1,30 @@
-name: "Setup Nix"
-description: "Install Nix and configure caching"
-inputs:
-  cachix-auth-token:
-    description: "Cachix authentication token"
-    required: false
+name: Setup Nix with action cache
+description: Install Nix and restore/save the store with cache-nix-action
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Install Nix
-      uses: cachix/install-nix-action@616559265b40713947b9c190a8ff4b507b5df49b # v31.10.4
+      uses: nixbuild/nix-quick-install-action@9f63be77f412a248c9d9a65a4c82cf066cdf8f0c # v35
       with:
         github_access_token: ${{ github.token }}
-
-    - name: Setup Cachix (ryoppippi)
-      uses: cachix/cachix-action@1eb2ef646ac0255473d23a5907ad7b04ce94065c # v17
-      with:
-        name: ryoppippi
-        authToken: ${{ inputs.cachix-auth-token }}
+        nix_conf: |
+          access-tokens = github.com=${{ github.token }}
+          max-jobs = auto
 
     - name: Cache Nix store
       uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
       with:
-        primary-key: nix-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('flake.lock') }}
-        restore-prefixes-first-match: nix-${{ runner.os }}-${{ runner.arch }}-
+        primary-key: nix-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('flake.lock', 'flake.nix', 'Cargo.lock', 'Cargo.toml') }}-${{ github.sha }}
+        restore-prefixes-first-match: |
+          nix-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('flake.lock', 'flake.nix', 'Cargo.lock', 'Cargo.toml') }}-
+          nix-${{ github.workflow }}-${{ github.job }}-
+
+    - name: Fix single-user Nix store ownership
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        for path in /nix/var/log/nix /nix/var/nix; do
+          if [ -e "$path" ]; then
+            sudo chown -R "$USER:$(id -gn)" "$path"
+          fi
+        done
