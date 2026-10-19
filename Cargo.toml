@@ -15,7 +15,7 @@ name = "tgrab"
 path = "src/lib.rs"
 
 [dependencies]
-anyhow = "1"
+anyhow = "1.0.104"
 clap = { version = "4", features = ["derive"] }
 impit = { git = "https://github.com/apify/impit.git", branch = "master" }
 quick-xml = "0.37"
