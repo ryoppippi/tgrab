@@ -16,7 +16,7 @@ path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1.0.104"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4.6.7", features = ["derive"] }
 impit = { git = "https://github.com/apify/impit.git", branch = "master" }
 quick-xml = "0.37"
 regex = "1"
