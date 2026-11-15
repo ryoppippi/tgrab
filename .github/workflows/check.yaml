@@ -3,6 +3,10 @@ on:
   pull_request:
   push:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   check:
     # Same-repo branches are already covered by the push event, so only run
