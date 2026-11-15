@@ -1,30 +1,9 @@
-name: Setup Nix with action cache
-description: Install Nix and restore/save the store with cache-nix-action
+name: Setup Nix with persistent cache
+description: Install Nix and configure the persistent cache
 runs:
   using: composite
   steps:
-    - name: Install Nix
-      uses: nixbuild/nix-quick-install-action@9f63be77f412a248c9d9a65a4c82cf066cdf8f0c # v35
+    - name: Install Nix and configure cache
+      uses: x-ryoppippi/setup-nix@7f7ff26554cbbf09c1ce4f3369ca8fd2120a42d1
       with:
-        github_access_token: ${{ github.token }}
-        nix_conf: |
-          access-tokens = github.com=${{ github.token }}
-          max-jobs = auto
-
-    - name: Cache Nix store
-      uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
-      with:
-        primary-key: nix-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('flake.lock', 'flake.nix', 'Cargo.lock', 'Cargo.toml') }}-${{ github.sha }}
-        restore-prefixes-first-match: |
-          nix-${{ github.workflow }}-${{ github.job }}-${{ hashFiles('flake.lock', 'flake.nix', 'Cargo.lock', 'Cargo.toml') }}-
-          nix-${{ github.workflow }}-${{ github.job }}-
-
-    - name: Fix single-user Nix store ownership
-      if: runner.os != 'Windows'
-      shell: bash
-      run: |
-        for path in /nix/var/log/nix /nix/var/nix; do
-          if [ -e "$path" ]; then
-            sudo chown -R "$USER:$(id -gn)" "$path"
-          fi
-        done
+        github-token: ${{ github.token }}
